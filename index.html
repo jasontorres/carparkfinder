@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <title>Parada</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <style type="text/css">
+      html { height: 100% }
+      body { height: 100%; margin: 0px; padding: 0px }
+      #map_canvas { height: 100% }
+    </style>
+
+    <script src="https://www.google.com/jsapi?key=ABQIAAAAgaCQFSU8HK526fds69vYDhQisED78_U7d4Jg_3Mx7W8nSXAWCRQnhOoXPjtsINeC9Q-MHsiZpzwhYQ" type="text/javascript"></script>
+
+    <script type="text/javascript">
+      google.load("jquery", "1.6.0");      
+    </script>
+
+    <script type="text/javascript"
+        src="http://maps.google.com/maps/api/js?sensor=true">
+    </script>
+
+    <script type="text/javascript">
+      // This code generates a "Raw Searcher" to handle search queries. The Raw Searcher requires
+      // you to handle and draw the search results manually.
+      google.load('search', '1');
+
+      var localSearch;
+      var map;
+      //var currentMarkers = new Array();
+
+      function Markers() {
+        this._currentMarkers = new Array();
+
+        this.push = function(marker) {
+          this._currentMarkers.push(marker);
+        }
+
+        this.isExisting = function(marker) {
+          for(var i=0;i <= this._currentMarkers.length;i++) {        
+
+            if(this._currentMarkers[i] != undefined && marker.equals(this._currentMarkers[i].getPosition())) {
+              return true;
+            }
+
+          }
+        }
+
+        this.get = function(marker) {
+          for(var i=0;i <= this._currentMarkers.length;i++) {        
+
+            if(this._currentMarkers[i] != undefined && marker.equals(this._currentMarkers[i].getPosition())) {
+              return this._currentMarkers[i];
+            }
+
+          }
+        }
+
+        this.data = {}
+      }
+
+      var markers = new Markers();
+
+      function searchComplete() {
+
+        // Check that we got results
+        if (localSearch.results && localSearch.results.length > 0) {
+          for (var i = 0; i < localSearch.results.length; i++) {
+
+            var result = localSearch.results[i];
+
+            var latLng = new google.maps.LatLng(localSearch.results[i].lat, localSearch.results[i].lng)
+          
+            if(!markers.isExisting(latLng)) {
+              // make sure it doesn't exist
+              var marker = new google.maps.Marker({
+                  map:map,
+                  draggable:true,
+                  animation: google.maps.Animation.DROP,
+                  position: latLng
+              });
+
+              // add the custom data
+              marker.data = {
+                title : stripTags(result.title),
+                address : result.streetAddress,
+                city : result.city,
+                region : result.region,
+                lat : result.lat,
+                lng : result.lng
+              }
+
+              google.maps.event.addListener(marker, 'click', function(e) {
+
+                  $.post('/locations', {'data' : JSON.stringify(markers.get(e.latLng).data) }, function() {
+
+                    console.log("post success");
+                   
+                   
+                  }, 'json')
+
+                // console.log(JSON.stringify(markers.get(e.latLng).data));
+              });
+
+              markers.push(marker);
+
+            } 
+
+          }
+        }
+      }
+
+      function onLoad() {
+
+        // Include the required Google branding.
+        // Note that getBranding is called on google.search.Search
+        google.search.Search.getBranding('branding');
+ 
+        initializeLocalSearch();
+        initializeMap();
+      }
+
+      function search() {
+
+        localSearch.setCenterPoint(map.getCenter());
+
+        // Specify search quer(ies)
+        localSearch.execute(document.getElementById('q').value);
+
+        return false;
+      }
+
+      function dropPin() {
+        marker = new google.maps.Marker({
+            map:map,
+            draggable:true,
+            animation: google.maps.Animation.DROP,
+            position: map.getCenter()
+        });
+        google.maps.event.addListener(marker, 'click', function() {
+            
+ //           alert("effin awesome");
+
+
+        });
+      }
+
+      function initializeMap() {
+        var latlng = new google.maps.LatLng(14.550023, 121.05629);
+        var mapOptions = {
+          zoom: 12,
+          center: latlng,
+          draggable: true,
+          mapTypeId: google.maps.MapTypeId.ROADMAP
+        };
+        map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+      }
+
+      function initializeLocalSearch() {
+        // Create a LocalSearch instance.
+        localSearch = new google.search.LocalSearch();
+        localSearch.setResultSetSize(8);
+        localSearch.setSearchCompleteCallback(this, searchComplete, null);
+      }
+
+      function stripTags(str) {
+        return str.replace(/(<([^>]+)>)/ig,"");
+      }
+
+      // Set a callback to call your code when the page loads
+      google.setOnLoadCallback(onLoad);
+
+    </script>
+  </head>
+
+  <body style="font-family: Arial;border: 0 none;">
+
+    <div id="header">
+        <div id="branding" style="float: right;"></div>
+        <form action="" method="get" onsubmit="return search();">
+          Search: 
+          <input name="q" id="q" value="parking lot" />
+          <input type="submit" value="search" />
+        </form>
+
+        <a href="javascript:dropPin();">Add new marker</a>
+
+        <form action="/locations" method="post">
+          <input type="submit" value="Update" />
+        </form>
+    </div>
+
+    <div id="map_canvas" style="width:100%; height:100%"></div>
+
+  </body>
+</html>
+
+
